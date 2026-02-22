@@ -4,6 +4,7 @@
  */
 import { ChildProcess, exec, spawn } from 'child_process';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 
 import {
@@ -92,6 +93,16 @@ function buildVolumeMounts(
         readonly: true,
       });
     }
+  }
+
+  // Google credentials directory (Gmail, Calendar, Drive, Sheets)
+  const googleCredsDir = path.join(os.homedir(), '.config', 'nanoclaw-google');
+  if (fs.existsSync(googleCredsDir)) {
+    mounts.push({
+      hostPath: googleCredsDir,
+      containerPath: '/home/node/.config/nanoclaw-google',
+      readonly: false,
+    });
   }
 
   // Per-group Claude sessions directory (isolated from other groups)
