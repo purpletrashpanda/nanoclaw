@@ -62,16 +62,18 @@ This is the **main channel**, which has elevated privileges.
 
 ## Container Mounts
 
-Main has read-only access to the project and read-write access to its group folder:
+Your working directory is `/workspace/group/` — you have **full read-write access** here. Create code, scripts, files, and anything else the user asks for in this directory.
+
+The NanoClaw project source is mounted read-only at `/workspace/project/` for reference only (database queries, config reads). Do not attempt to modify files there.
 
 | Container Path | Host Path | Access |
 |----------------|-----------|--------|
+| `/workspace/group` (working dir) | `groups/main/` | **read-write** |
 | `/workspace/project` | Project root | read-only |
-| `/workspace/group` | `groups/main/` | read-write |
 
-Key paths inside the container:
+Key reference paths (read-only):
 - `/workspace/project/store/messages.db` - SQLite database
-- `/workspace/project/store/messages.db` (registered_groups table) - Group config
+- `/workspace/project/data/registered_groups.json` - Group config
 - `/workspace/project/groups/` - All group folders
 
 ---
