@@ -7,12 +7,50 @@ import {
   OnChatMetadata,
   OnInboundMessage,
   RegisteredGroup,
+  SendMessageOptions,
 } from '../types.js';
 
 export interface TelegramChannelOpts {
   onMessage: OnInboundMessage;
   onChatMetadata: OnChatMetadata;
   registeredGroups: () => Record<string, RegisteredGroup>;
+}
+
+/**
+ * Convert standard markdown to Telegram-compatible HTML.
+ * Handles the most common patterns agents produce. If the result
+ * is malformed, sendMessage falls back to plain text.
+ */
+function markdownToTelegramHtml(text: string): string {
+  // HTML-escape first
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Fenced code blocks: ```lang\n...\n```
+  html = html.replace(/```[\w]*\n([\s\S]*?)```/g, '<pre>$1</pre>');
+  // Fenced code blocks without trailing newline
+  html = html.replace(/```[\w]*([\s\S]*?)```/g, '<pre>$1</pre>');
+
+  // Inline code: `...`
+  html = html.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+
+  // Headings: ## text → bold line (must be at line start)
+  html = html.replace(/^#{1,6}\s+(.+)$/gm, '<b>$1</b>');
+
+  // Bold: **text** or __text__
+  html = html.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  html = html.replace(/__(.+?)__/g, '<b>$1</b>');
+
+  // Italic: *text* or _text_ (but not inside words like snake_case)
+  html = html.replace(/(?<!\w)\*([^*\n]+?)\*(?!\w)/g, '<i>$1</i>');
+  html = html.replace(/(?<!\w)_([^_\n]+?)_(?!\w)/g, '<i>$1</i>');
+
+  // Links: [text](url)
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+
+  return html;
 }
 
 export class TelegramChannel implements Channel {
@@ -187,7 +225,7 @@ export class TelegramChannel implements Channel {
     });
   }
 
-  async sendMessage(jid: string, text: string): Promise<void> {
+  async sendMessage(jid: string, text: string, options?: SendMessageOptions): Promise<void> {
     if (!this.bot) {
       logger.warn('Telegram bot not initialized');
       return;
@@ -196,16 +234,26 @@ export class TelegramChannel implements Channel {
     try {
       const numericId = jid.replace(/^tg:/, '');
 
-      // Telegram has a 4096 character limit per message — split if needed
+      // Split plain text first, then convert each chunk to HTML.
+      // This avoids breaking HTML tags at chunk boundaries.
       const MAX_LENGTH = 4096;
-      if (text.length <= MAX_LENGTH) {
-        await this.bot.api.sendMessage(numericId, text);
-      } else {
-        for (let i = 0; i < text.length; i += MAX_LENGTH) {
-          await this.bot.api.sendMessage(
-            numericId,
-            text.slice(i, i + MAX_LENGTH),
-          );
+      const textChunks: string[] = [];
+      for (let i = 0; i < text.length; i += MAX_LENGTH) {
+        textChunks.push(text.slice(i, i + MAX_LENGTH));
+      }
+
+      for (let i = 0; i < textChunks.length; i++) {
+        const html = markdownToTelegramHtml(textChunks[i]);
+        // Only reply-to on the first chunk
+        const params: Record<string, unknown> = { parse_mode: 'HTML' };
+        if (i === 0 && options?.replyToMessageId) {
+          params.reply_parameters = { message_id: Number(options.replyToMessageId) };
+        }
+        try {
+          await this.bot.api.sendMessage(numericId, html, params);
+        } catch {
+          // HTML parse failed — fall back to plain text
+          await this.bot.api.sendMessage(numericId, textChunks[i]);
         }
       }
       logger.info({ jid, length: text.length }, 'Telegram message sent');

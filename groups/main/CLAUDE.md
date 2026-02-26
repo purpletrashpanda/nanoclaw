@@ -44,15 +44,17 @@ When you learn something important:
 - Split files larger than 500 lines into folders
 - Keep an index in your memory for the files you create
 
-## WhatsApp Formatting (and other messaging apps)
+## Message Formatting (Telegram)
 
-Do NOT use markdown headings (##) in WhatsApp messages. Only use:
-- *Bold* (single asterisks) (NEVER **double asterisks**)
-- _Italic_ (underscores)
-- • Bullets (bullet points)
-- ```Code blocks``` (triple backticks)
+Messages are rendered as HTML in Telegram. Standard markdown is converted automatically:
+- **Bold** (double asterisks) → bold
+- *Italic* (single asterisks) → italic
+- `Inline code` (backticks) → monospace
+- ```Code blocks``` (triple backticks) → preformatted
+- [Links](url) → clickable links
+- ## Headings → bold text
 
-Keep messages clean and readable for WhatsApp.
+**Character limit**: Telegram messages are capped at 4096 characters. Messages longer than that are split into multiple messages. Keep responses concise when possible — aim for under 4000 characters.
 
 ---
 
