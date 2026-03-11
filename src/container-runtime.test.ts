@@ -60,7 +60,7 @@ describe('ensureContainerRuntimeRunning', () => {
     expect(mockExecSync).toHaveBeenCalledTimes(1);
     expect(mockExecSync).toHaveBeenCalledWith(
       `${CONTAINER_RUNTIME_BIN} system status`,
-      { stdio: 'pipe' },
+      { stdio: 'pipe', timeout: 10000 },
     );
   });
 
